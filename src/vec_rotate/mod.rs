@@ -1,4 +1,4 @@
-use std::{fmt::Debug, ops::{Index, IndexMut}, slice::SliceIndex};
+use std::{fmt::Debug, ops::{Index, IndexMut}};
 
 mod test;
 
@@ -66,13 +66,35 @@ impl<T: Clone> VecRotate<T> {
     
     pub fn extend(&mut self, extension: &[T]) {
         let num_new = extension.len();
-        self.array = [&self[..self.start_index], extension, &self[self.start_index..]].concat();
+        self.array = [
+            &self.array[..self.start_index],
+            extension,
+            &self.array[self.start_index..]
+        ].concat();
         self.length += num_new;
         self.start_index += num_new;
     }
 
-    // fn replace(&mut self, 
+    pub fn index_via_array(&self, index: &[usize]) -> Vec<T> {
+        index.iter().map(|&idx| &self[idx]).cloned().collect()
+    }
 
+    /// Replace the rotated array entries at the specified indexx with new entries.
+    pub fn update_via_array(&mut self, index: &[usize], new_entries: &[T]) {
+        for (i, entry) in new_entries.iter().enumerate() {
+            self[index[i]] = entry.clone();
+        }
+    } 
+
+    fn wrap_index(&self, index: usize) -> usize 
+    {
+        let tail = self.length - self.start_index;
+        if index < tail {
+                self.start_index + index
+        } else {
+            index - tail
+        }
+    }
 }
 
 impl<T: Clone> IntoIterator for VecRotate<T> {
@@ -80,8 +102,8 @@ impl<T: Clone> IntoIterator for VecRotate<T> {
     type IntoIter = std::vec::IntoIter<Self::Item>;
 
     fn into_iter(self) -> Self::IntoIter {
-        self[self.start_index..].iter()
-            .chain(self[..self.start_index].iter())
+        self.array[self.start_index..].iter()
+            .chain(self.array[..self.start_index].iter())
             .cloned().collect::<Vec<T>>().into_iter()
     }
 }
@@ -113,23 +135,24 @@ impl<T: Clone> Into<Vec<T>> for VecRotate<T> {
     }
 }
 
-impl<T: Clone, I> Index<I> for VecRotate<T> 
-where
-    I: SliceIndex<[T], Output = [T]> 
-{
-    type Output = [T];
+/// Produce an array of T from the index. 
+/// 
+/// Would love to implement this for:
+///     I: SliceIndex<[T]>
+/// However, this is proving to be very difficult.
+impl<T: Clone> Index<usize> for VecRotate<T> {
+    type Output = T;
 
-    fn index(&self, index: I) -> &Self::Output {
-        self.array.index(index)
+    fn index(&self, index: usize) -> &Self::Output {
+        let wrapped_index = &self.wrap_index(index);
+        &self.array[*wrapped_index]
     }
 }
 
-impl<T: Clone, I> IndexMut<I> for VecRotate<T> 
-where
-    I: SliceIndex<[T], Output = [T]> 
-{
-    fn index_mut(&mut self, index: I) -> &mut Self::Output {
-        self.array.index_mut(index)
+impl<T: Clone> IndexMut<usize> for VecRotate<T> {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        let wrapped_index = &self.wrap_index(index);
+        &mut self.array[*wrapped_index]
     }
 }
 

@@ -93,11 +93,27 @@ fn test_extend() {
 }
 
 #[test]
+fn test_index() {
+    let mut rotate: VecRotate<u32> = VecRotate::from(&[1, 2, 3, 4, 5]);
+    assert_eq!(rotate[1], 2);
+    assert_eq!(rotate.index_via_array(&[0, 1, 2]), vec![1, 2, 3]);
+    rotate.shift_forward(2);
+    assert_eq!(rotate[1], 5);
+    assert_eq!(rotate.index_via_array(&[0, 1, 2]), vec![4, 5, 1]);
+}
+
+#[test]
 fn test_mutable_index() {
     let mut rotate: VecRotate<u32> = VecRotate::from(&[1, 2, 3, 4, 5]);
-    rotate[1..4] = [9, 9, 9 as u32].as_slice();
+    rotate.update_via_array(&[1, 2, 3], &[12, 13, 14]);
     let mut mutated: Vec<u32> = rotate.clone().into();
-    assert_eq!(mutated, vec![1, 9, 9, 9, 5]);
+    assert_eq!(mutated, vec![1, 12, 13, 14, 5]);
+    rotate.shift_forward(2);
+    mutated = rotate.clone().into();
+    assert_eq!(mutated, vec![14, 5, 1, 12, 13]);
+    rotate.update_via_array(&[0], &[99]);
+    mutated = rotate.clone().into();
+    assert_eq!(mutated, vec![99, 5, 1, 12, 13]);
 }
 
 #[test]
